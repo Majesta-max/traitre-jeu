@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>L’Imposteur</title>
+<style>
+:root{--bg:#eef0fb;--card:#fff;--ink:#1d2340;--mute:#6a7091;--acc:#e0245e;--ok:#1f9d8a;--line:#d5d9f0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161a33;--card:#212749;--ink:#eef0fb;--mute:#9aa1cc;--line:#343c6b}}
+:root[data-theme="dark"]{--bg:#161a33;--card:#212749;--ink:#eef0fb;--mute:#9aa1cc;--line:#343c6b}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;min-height:100vh}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:34px;margin:8px 0 4px;letter-spacing:-.5px}
+h2{font-size:24px;margin:0 0 12px}
+p{line-height:1.5;margin:6px 0}
+.mute{color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 18px;background:var(--ink);color:var(--bg);width:100%;cursor:pointer;margin-top:10px}
+button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button.red{background:var(--acc);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+input[type=text]{font:inherit;width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);margin:4px 0}
+input.code{text-transform:uppercase;letter-spacing:8px;text-align:center;font-size:24px;font-weight:700}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
+.step{display:flex;align-items:center;gap:12px}
+.step button{width:42px;height:42px;padding:0;margin:0;font-size:20px}
+.step b{min-width:24px;text-align:center;font-size:20px}
+.word{font-size:40px;font-weight:800;text-align:center;margin:18px 0;word-break:break-word}
+.pl{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.pl:last-child{border-bottom:0}
+.pl.dead{opacity:.5}
+.pl button{width:auto;margin:0;padding:8px 14px}
+.tag{font-size:13px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--line);white-space:nowrap}
+.tag.c{background:var(--ok);color:#fff}.tag.u,.tag.w{background:var(--acc);color:#fff}
+.big{text-align:center;font-size:48px;margin:6px 0}
+.err{color:var(--acc);font-weight:600;min-height:22px}
+.room{font-size:34px;font-weight:800;letter-spacing:8px;text-align:center;margin:6px 0}
+.av{width:36px;height:36px;border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;font-size:22px;background:var(--line);flex:none;vertical-align:middle;margin-right:8px}
+.av.xl{width:84px;height:84px;font-size:52px;margin:0 auto 8px;display:flex}
+.avs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.avs button{width:44px;height:44px;padding:0;margin:0;font-size:24px;background:transparent;border:2px solid var(--line)}
+.avs button.on{border-color:var(--acc)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+var PAIRS=[["Chat","Chien"],["Café","Thé"],["Pizza","Tarte flambée"],["Plage","Piscine"],["Guitare","Violon"],["Vélo","Trottinette"],["Pomme","Poire"],["Cinéma","Théâtre"],["Hôpital","Clinique"],["Facebook","Instagram"],["Football","Rugby"],["Chocolat","Caramel"],["Avion","Hélicoptère"],["Lunettes","Lentilles"],["Cuillère","Fourchette"],["Roi","Empereur"],["Dentiste","Médecin"],["Pâtes","Riz"],["Ski","Snowboard"],["Livre","Magazine"],["Mer","Océan"],["Tigre","Lion"],["Douche","Bain"],["Mariage","Pacs"],["Pull","Gilet"],["Vampire","Zombie"],["Netflix","YouTube"],["Burger","Kebab"],["Montre","Bracelet"],["Pirate","Corsaire"],["Harry Potter","Seigneur des anneaux"],["Sushi","Maki"],["Moto","Scooter"],["Bière","Cidre"],["Château","Palais"]];
+var S={screen:"menu",n:5,nu:1,white:true,names:[],err:"",pseudo:"",code:"",busy:false};
+var RM,O=null;
+S.av="🕵️";S.photo="";
+try{S.pseudo=localStorage.getItem("imp_pseudo")||"";S.av=localStorage.getItem("imp_av")||"🕵️";S.photo=localStorage.getItem("imp_photo")||""}catch(e){}
+var app=document.getElementById("app");
+function esc(t){var d=document.createElement("div");d.textContent=t;return d.innerHTML}
+function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function norm(t){return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"")}
+function lbl(r){return r=="c"?"Civil":r=="u"?"Undercover":"Mr White"}
+function nm(i){return (S.names[i]&&S.names[i].trim())||("Joueur "+(i+1))}
+function saveNames(){document.querySelectorAll("[data-n]").forEach(function(e){S.names[+e.dataset.n]=e.value})}
+function savePs(){try{localStorage.setItem("imp_pseudo",S.pseudo);localStorage.setItem("imp_av",S.av);localStorage.setItem("imp_photo",S.photo)}catch(e){}}
+function go(s){S.screen=s;render()}
+function render(){app.innerHTML=({menu:rMenu,setup:rSetup,reveal:rReveal,play:rPlay,out:rOut,end:rEnd,o:rO})[S.screen]()}
+
+/* ---------- Menu ---------- */
+function rMenu(){
+  var h='<h1>L’Imposteur</h1><p class="mute">Trouve qui n’a pas le même mot que les autres.</p><div class="card"><label for="ps"><b>Ton pseudo</b></label><input type="text" id="ps" maxlength="16" placeholder="Ton pseudo" value="'+esc(S.pseudo)+'" oninput="S.pseudo=this.value;savePs()">'+avPicker()+'</div>';
+  if(RM===undefined)h+='<p class="mute">Connexion au mode en ligne…</p>';
+  else if(RM)h+='<div class="card"><h2>En ligne</h2><button class="red" '+(S.busy?"disabled":"")+' onclick="enter(genCode(),true)">Créer une partie</button><p class="mute" style="margin-top:18px">Ou rejoins tes amis avec leur code :</p><input type="text" class="code" id="cd" maxlength="4" placeholder="CODE" aria-label="Code de la partie" value="'+esc(S.code)+'" oninput="S.code=this.value"><button '+(S.busy?"disabled":"")+' onclick="enter(norm(S.code),false)">Rejoindre</button></div>';
+  else h+='<div class="card"><p class="mute">Le mode en ligne n’est pas disponible ici. Ouvre la page depuis claude.ai, connecté, pour jouer avec un code.</p></div>';
+  return h+'<p class="err">'+esc(S.err)+'</p><button class="alt" onclick="S.err=\'\';go(\'setup\')">Jouer sur un seul téléphone</button>'}
+
+/* ---------- Un seul téléphone ---------- */
+function rSetup(){
+  var h='<h1>Un seul téléphone</h1><p class="mute">On se passe le téléphone : chacun découvre son mot en secret.</p><div class="card">';
+  h+='<div class="row"><span>Joueurs</span><span class="step"><button class="alt" onclick="chg(\'n\',-1)" aria-label="Moins de joueurs">−</button><b>'+S.n+'</b><button class="alt" onclick="chg(\'n\',1)" aria-label="Plus de joueurs">+</button></span></div>';
+  h+='<div class="row"><span>Undercovers</span><span class="step"><button class="alt" onclick="chg(\'nu\',-1)" aria-label="Moins d’undercovers">−</button><b>'+S.nu+'</b><button class="alt" onclick="chg(\'nu\',1)" aria-label="Plus d’undercovers">+</button></span></div>';
+  h+='<div class="row"><label for="w">Ajouter Mr White</label><input type="checkbox" id="w" '+(S.white?"checked":"")+' onchange="saveNames();S.white=this.checked;render()"></div></div><div class="card"><h2>Les prénoms</h2>';
+  for(var i=0;i<S.n;i++)h+='<input type="text" data-n="'+i+'" placeholder="Joueur '+(i+1)+'" value="'+esc(S.names[i]||"")+'" aria-label="Prénom du joueur '+(i+1)+'">';
+  return h+'</div><p class="err">'+S.err+'</p><button class="red" onclick="start()">Lancer la partie</button><button class="alt" onclick="S.err=\'\';go(\'menu\')">Retour au menu</button>'}
+function chg(k,d){saveNames();S[k]=Math.max(k=="n"?3:1,Math.min(k=="n"?12:4,S[k]+d));S.err="";render()}
+function start(){
+  saveNames();var imp=S.nu+(S.white?1:0);
+  if(S.n-imp<=imp){S.err="Trop d’imposteurs : il faut plus de civils que d’imposteurs.";render();return}
+  var pair=shuf(PAIRS)[0],sw=Math.random()<.5;
+  S.cw=sw?pair[1]:pair[0];S.uw=sw?pair[0]:pair[1];
+  var roles=[],i;for(i=0;i<S.n;i++)roles.push("c");
+  for(i=0;i<S.nu;i++)roles[i]="u";if(S.white)roles[S.nu]="w";
+  roles=shuf(roles);
+  S.p=roles.map(function(r,i){return{name:nm(i),role:r,alive:true}});
+  S.idx=0;S.shown=false;go("reveal")}
+function rReveal(){
+  var p=S.p[S.idx];
+  if(!S.shown)return '<h2>Passe le téléphone à</h2><div class="word">'+esc(p.name)+'</div><p class="mute" style="text-align:center">Les autres ne regardent pas !</p><button onclick="S.shown=true;render()">Voir mon mot</button>';
+  var w=p.role=="c"?S.cw:p.role=="u"?S.uw:null;
+  return '<h2>'+esc(p.name)+', ton mot :</h2><div class="card">'+(w?'<div class="word">'+esc(w)+'</div>':'<div class="word">Aucun mot</div><p style="text-align:center">Tu es <b>Mr White</b>. Écoute bien les autres et bluffe.</p>')+'</div><input type="text" id="lc" maxlength="24" placeholder="Écris un mot qui se rapproche du tien" aria-label="Ton mot indice"><button onclick="nextReveal()">'+(S.idx<S.n-1?"Valider, au suivant":"Valider, on commence")+'</button>'}
+function nextReveal(){var v=(document.getElementById("lc").value||"").trim();if(!v){document.getElementById("lc").focus();return}S.p[S.idx].clue=v.slice(0,24);S.shown=false;S.idx++;if(S.idx>=S.n){S.start=pickStart();S.round=1;go("play")}else render()}
+function alive(){return S.p.filter(function(p){return p.alive})}
+function pickStart(){return shuf(alive().filter(function(p){return p.role!="w"}))[0].name}
+function rPlay(){
+  var h='<h2>Tour '+S.round+'</h2><div class="card"><p>Chacun son tour, dites <b>un seul mot</b> pour décrire votre mot, sans être trop évident.</p><p><b>'+esc(S.start)+'</b> commence.</p></div><div class="card"><p class="mute">Après la discussion, votez : touche le joueur éliminé.</p>';
+  S.p.forEach(function(p,i){h+='<div class="pl '+(p.alive?"":"dead")+'"><span>'+esc(p.name)+(p.clue?'<br><small class="mute">« '+esc(p.clue)+' »</small>':'')+'</span>'+(p.alive?'<button class="alt" onclick="elim('+i+')">Éliminer</button>':'<span class="tag '+p.role+'">'+lbl(p.role)+'</span>')+'</div>'});
+  return h+'</div>'}
+function elim(i){if(!confirm("Éliminer "+S.p[i].name+" ?"))return;S.p[i].alive=false;S.out=i;S.guessed=false;go("out")}
+function rOut(){
+  var p=S.p[S.out];
+  var h='<h2>'+esc(p.name)+' est éliminé</h2><div class="card"><div class="big">'+(p.role=="c"?"🙂":p.role=="u"?"🕵️":"👻")+'</div><p style="text-align:center">C’était un <span class="tag '+p.role+'">'+lbl(p.role)+'</span></p>';
+  if(p.role=="w"&&!S.guessed)h+='<p>Dernière chance ! Quel est le mot des civils ?</p><input type="text" id="g" aria-label="Mot des civils"><button class="red" onclick="guess()">Valider</button></div>';
+  else h+='</div><button onclick="after()">Continuer</button>';
+  return h}
+function guess(){S.guessed=true;if(norm(document.getElementById("g").value)==norm(S.cw)){S.win="w";go("end")}else after()}
+function after(){S.guessed=false;var a=alive(),c=a.filter(function(p){return p.role=="c"}).length,im=a.length-c;
+  if(im==0){S.win="c";go("end")}else if(c<=im){S.win="i";go("end")}else{S.round++;S.start=pickStart();go("play")}}
+function winTxt(w){return w=="c"?"Les civils gagnent !":w=="w"?"Mr White gagne !":"Les imposteurs gagnent !"}
+function rEnd(){
+  var h='<div class="big">'+(S.win=="c"?"🎉":"😈")+'</div><h1 style="text-align:center">'+winTxt(S.win)+'</h1><p class="mute" style="text-align:center">'+(S.win=="w"?"Il a deviné « "+esc(S.cw)+" ».":"")+'</p><div class="card"><p>Mot des civils : <b>'+esc(S.cw)+'</b></p><p>Mot de l’undercover : <b>'+esc(S.uw)+'</b></p>';
+  S.p.forEach(function(p){h+='<div class="pl"><span>'+esc(p.name)+'</span><span class="tag '+p.role+'">'+lbl(p.role)+'</span></div>'});
+  return h+'</div><button class="red" onclick="start()">Rejouer avec les mêmes joueurs</button><button class="alt" onclick="go(\'setup\')">Changer les réglages</button><button class="alt" onclick="go(\'menu\')">Menu</button>'}
+
+/* ---------- En ligne (l’hôte arbitre, tout passe par la présence) ---------- */
+function genCode(){var c="abcdefghjkmnpqrstuvwxyz23456789",s="";for(var i=0;i<4;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function pl(){return O.r.peers().filter(function(p){return p.presence&&p.presence.name})}
+function hostPeer(){return pl().filter(function(p){return p.presence.host===true})[0]}
+function myPeer(){return O.r.peers().filter(function(p){return p.sameTab})[0]}
+function SG(){var h=hostPeer();return h&&h.presence.g}
+var AVS=["🕵️","🦊","🐼","🐸","🦄","👽","🤖","🐙","🦁","🐧","🥷","🧛"];
+function avHtml(av,ph,cls){var c="av"+(cls?" "+cls:"");
+  if(ph&&ph.length<3000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(ph))return '<img class="'+c+'" alt="" src="'+ph+'">';
+  return '<span class="'+c+'" aria-hidden="true">'+esc(String(av||"🙂").slice(0,8))+'</span>'}
+function avPicker(){
+  var h='<p style="margin:14px 0 4px"><b>Ton avatar</b></p><div style="text-align:center">'+avHtml(S.av,S.photo,"xl")+'</div><div class="avs">';
+  AVS.forEach(function(e){h+='<button class="'+(!S.photo&&S.av==e?"on":"")+'" aria-label="Avatar '+e+'" onclick="S.av=\''+e+'\';S.photo=\'\';savePs();render()">'+e+'</button>'});
+  h+='</div><input type="file" id="ph" accept="image/*" style="display:none" onchange="pickPhoto(this)"><button class="alt" onclick="document.getElementById(\'ph\').click()">Prendre ou choisir une photo</button>';
+  if(S.photo)h+='<button class="alt" onclick="S.photo=\'\';savePs();render()">Retirer ma photo</button>';
+  return h}
+function pickPhoto(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var u=URL.createObjectURL(f),im=new Image();
+  im.onload=function(){
+    var s=Math.min(im.width,im.height),sx=(im.width-s)/2,sy=(im.height-s)/2,out="";
+    [[44,.6],[40,.5],[32,.5],[28,.4]].some(function(c){var cv=document.createElement("canvas");cv.width=cv.height=c[0];cv.getContext("2d").drawImage(im,sx,sy,s,s,0,0,c[0],c[0]);out=cv.toDataURL("image/jpeg",c[1]);return out.length<=1500});
+    URL.revokeObjectURL(u);
+    if(out.length>1500||out.indexOf("data:image/jpeg")!=0){S.err="Photo trop lourde, essaie-en une autre."}
+    else{S.err="";S.photo=out}
+    savePs();render()};
+  im.onerror=function(){S.err="Impossible de lire cette photo.";render()};
+  im.src=u}
+function pav(p){return avHtml(p.presence.av,p.presence.ph)}
+function pwho(id){var p=pl().filter(function(x){return x.peer==id})[0];return (p?pav(p):"")+pname(id)}
+function pXl(id){var p=pl().filter(function(x){return x.peer==id})[0];return p?avHtml(p.presence.av,p.presence.ph,"xl"):""}
+function pname(id){var p=pl().filter(function(x){return x.peer==id})[0];return p?esc(String(p.presence.name).slice(0,16)):"(parti)"}
+function aliveIds(g){var pr=pl().map(function(p){return p.peer});return g.order.filter(function(id){return !g.dead[id]&&pr.indexOf(id)>=0})}
+function pub(){var G=O.G,g={phase:G.phase,cfg:G.cfg,round:G.round,vs:G.vs,gid:G.gid,start:G.start,order:G.order,deal:G.deal,dead:G.dead,out:G.out,msg:G.msg,win:G.win,guessed:G.guessed};
+  if(G.phase=="end"){g.cw=G.cw;g.uw=G.uw}
+  O.r.presence({g:g}).catch(function(){})}
+
+async function enter(code,host){
+  var pseudo=(S.pseudo||"").trim().slice(0,16);
+  if(!pseudo){S.err="Choisis un pseudo d’abord.";render();return}
+  if(!host&&code.length!=4){S.err="Le code a 4 caractères.";render();return}
+  S.err="";S.busy=true;render();
+  var r;
+  try{r=await RM.join("imp-"+code)}catch(e){S.busy=false;S.err="Connexion impossible, réessaie.";render();return}
+  O={r:r,code:code,host:host,seen:false,show:false,err:"",G:null};
+  O.un=r.onPeers(onP);
+  try{await r.presence({name:pseudo,host:host,av:S.av,ph:S.photo||null})}catch(e){}
+  if(host){O.G={phase:"lobby",cfg:{nu:1,white:true},round:0,vs:0,gid:0,order:[],deal:{},dead:{},msg:"",win:null,out:null,guessed:false};pub();S.busy=false;go("o");return}
+  for(var i=0;i<12&&!hostPeer();i++)await new Promise(function(res){setTimeout(res,300)});
+  if(!hostPeer()){O.un();await r.leave();O=null;S.busy=false;S.err="Aucune partie avec le code "+code.toUpperCase()+".";go("menu");return}
+  S.busy=false;go("o")}
+function leave(){if(!O)return;O.un();O.r.leave();O=null;go("menu")}
+function onP(){
+  if(!O)return;if(hostPeer())O.seen=true;
+  if(O.host)hostTick();
+  if(S.screen=="o"){var a=document.activeElement;if(a&&(a.id=="g"||a.id=="cl"))return;render()}}
+
+function hostTick(){
+  var G=O.G;if(!G)return;
+  if(G.phase=="play"){
+    var a=aliveIds(G),votes={},cnt=0;
+    pl().forEach(function(p){var v=p.presence.vote;if(a.indexOf(p.peer)>=0&&p.presence.vs===G.vs&&a.indexOf(v)>=0){votes[v]=(votes[v]||0)+1;cnt++}});
+    if(a.length>0&&cnt==a.length){
+      var max=0,top=[];Object.keys(votes).forEach(function(k){if(votes[k]>max){max=votes[k];top=[k]}else if(votes[k]==max)top.push(k)});
+      G.vs++;
+      if(top.length>1){G.msg="Égalité, revotez !"}
+      else{G.out=top[0];G.dead[top[0]]=G.deal[top[0]][0];G.guessed=false;G.msg="";G.phase="out"}
+      pub()}
+  }else if(G.phase=="out"&&!G.guessed&&G.deal[G.out][0]=="w"){
+    var p=pl().filter(function(x){return x.peer==G.out})[0];
+    if(!p){G.guessed=true;pub()}
+    else if(p.presence.gid===G.gid&&typeof p.presence.guess=="string"&&p.presence.guess){
+      G.guessed=true;
+      if(norm(p.presence.guess)==norm(G.cw)){G.win="w";G.phase="end"}else G.msg="Raté ! Mr White n’a pas trouvé le mot.";
+      pub()}}}
+function hcfg(k,d){var c=O.G.cfg;c[k]=Math.max(1,Math.min(4,c[k]+d));pub()}
+function hstart(){
+  var G=O.G,ps=pl(),n=ps.length,imp=G.cfg.nu+(G.cfg.white?1:0);
+  if(n<3){O.err="Il faut au moins 3 joueurs.";render();return}
+  if(n-imp<=imp){O.err="Trop d’imposteurs pour "+n+" joueurs.";render();return}
+  O.err="";
+  var pair=shuf(PAIRS)[0],sw=Math.random()<.5,i;
+  G.cw=sw?pair[1]:pair[0];G.uw=sw?pair[0]:pair[1];
+  var roles=[];for(i=0;i<n;i++)roles.push("c");
+  for(i=0;i<G.cfg.nu;i++)roles[i]="u";if(G.cfg.white)roles[G.cfg.nu]="w";
+  roles=shuf(roles);
+  G.order=ps.map(function(p){return p.peer});G.deal={};
+  G.order.forEach(function(id,i){var r=roles[i];G.deal[id]=[r,r=="c"?G.cw:r=="u"?G.uw:""]});
+  G.dead={};G.out=null;G.msg="";G.win=null;G.guessed=false;G.round=1;G.gid++;G.vs++;
+  G.start=shuf(G.order.filter(function(id){return G.deal[id][0]!="w"}))[0];
+  G.phase="play";O.show=false;pub()}
+function hcont(){
+  var G=O.G,a=aliveIds(G);
+  var c=a.filter(function(id){return G.deal[id][0]=="c"}).length,im=a.length-c;
+  if(im==0){G.win="c";G.phase="end"}else if(c<=im){G.win="i";G.phase="end"}
+  else{G.round++;G.msg="";G.out=null;G.start=shuf(a.filter(function(id){return G.deal[id][0]!="w"}))[0];G.vs++;G.phase="play"}
+  pub()}
+function hreplay(){var G=O.G;G.phase="lobby";G.deal={};G.order=[];G.dead={};G.win=null;G.out=null;G.msg="";G.vs++;pub()}
+function voteFor(id){var g=SG();if(g)O.r.presence({vote:id,vs:g.vs}).catch(function(){})}
+function seeWord(){var g=SG();if(g){O.show=false;O.r.presence({sn:g.gid}).catch(function(){})}}
+function sendClue(){
+  var g=SG(),el=document.getElementById("cl"),v=el?el.value.trim().slice(0,24):"";
+  if(!g||!v)return;
+  var d=g.deal[myPeer().peer];
+  if(d&&d[1]&&norm(v)==norm(d[1])){O.cerr="Pas ton mot exact : trouve-en un qui s’en rapproche.";render();return}
+  O.cerr="";O.r.presence({cl:v,cr:g.gid+"-"+g.round}).catch(function(){})}
+function sendGuess(){var g=SG(),v=document.getElementById("g").value.trim().slice(0,40);if(v&&g)O.r.presence({guess:v,gid:g.gid}).catch(function(){})}
+
+function rO(){
+  var hp=hostPeer(),g=hp&&hp.presence.g,mp=myPeer(),my=mp&&mp.peer;
+  var top='<div class="row"><span class="tag">Code '+esc(O.code.toUpperCase())+'</span><button class="alt" style="width:auto;margin:0;padding:8px 14px" onclick="leave()">Quitter</button></div>';
+  if(!hp&&O.seen)return top+'<h2>L’hôte a quitté la partie</h2><p class="mute">Reviens au menu pour en créer une nouvelle.</p>';
+  if(!g)return top+'<p class="mute">Connexion à la partie…</p>';
+  var h=top,P=pl(),isH=O.host,i;
+  if(g.phase=="lobby"){
+    h+='<h2>Salle d’attente</h2><div class="card"><p class="mute" style="text-align:center">Code à donner à tes amis</p><div class="room">'+esc(O.code.toUpperCase())+'</div></div><div class="card"><h2>Joueurs ('+P.length+')</h2>';
+    P.forEach(function(p){h+='<div class="pl"><span>'+pav(p)+esc(String(p.presence.name).slice(0,16))+(p.sameTab?" (toi)":"")+'</span>'+(p.presence.host?'<span class="tag">Hôte</span>':'')+'</div>'});
+    h+='</div>';
+    if(isH){
+      h+='<div class="card"><div class="row"><span>Undercovers</span><span class="step"><button class="alt" onclick="hcfg(\'nu\',-1)" aria-label="Moins d’undercovers">−</button><b>'+g.cfg.nu+'</b><button class="alt" onclick="hcfg(\'nu\',1)" aria-label="Plus d’undercovers">+</button></span></div><div class="row"><label for="w">Ajouter Mr White</label><input type="checkbox" id="w" '+(g.cfg.white?"checked":"")+' onchange="O.G.cfg.white=this.checked;pub()"></div></div><p class="err">'+esc(O.err)+'</p><button class="red" onclick="hstart()">Lancer la partie</button>'}
+    else h+='<p class="mute" style="text-align:center">En attente du lancement par l’hôte…</p>';
+    return h}
+  if(g.phase=="play"){
+    var d=g.deal[my],dead=g.dead[my],rk=g.gid+"-"+g.round,missing=aliveIds(g).filter(function(id){var q=P.filter(function(x){return x.peer==id})[0];return !(q&&q.presence.cr===rk)});
+    h+='<h2>Tour '+g.round+'</h2><div class="card">';
+    if(!d)h+='<p>Tu as rejoint en cours de partie : regarde la manche, tu joueras la prochaine.</p>';
+    else if(dead)h+='<p>Tu es éliminé. Tu peux continuer à suivre la partie.</p>';
+    else{var w=d[0]=="w"?"Aucun mot (Mr White)":d[1],seen=mp&&mp.presence.sn===g.gid;if(!seen)h+='<p class="mute" style="text-align:center">Découvre ton mot, en secret</p><div class="word">'+esc(w)+'</div>'+(d[0]=="w"?'<p class="mute" style="text-align:center">Écoute bien les autres et bluffe.</p>':'')+'<button class="red" onclick="seeWord()">J’ai retenu mon mot</button>';else{h+='<p class="mute">Ton mot</p><div class="word">'+(O.show?esc(w):"• • • •")+'</div><button class="alt" onclick="O.show=!O.show;render()">'+(O.show?"Cacher mon mot":"Voir mon mot")+'</button>';if(mp.presence.cr===rk)h+='<p style="margin-top:14px">Ton mot envoyé : <b>'+esc(String(mp.presence.cl||"").slice(0,24))+'</b></p>';else h+='<p style="margin:14px 0 4px"><b>Écris un mot qui se rapproche du tien</b></p><input type="text" id="cl" maxlength="24" placeholder="Un seul mot" aria-label="Ton mot indice"><p class="err">'+esc(O.cerr||"")+'</p><button class="red" onclick="sendClue()">Envoyer mon mot</button>'}}
+    h+='</div><div class="card"><p>Chacun écrit <b>un seul mot</b> lié à son mot. <b>'+pname(g.start)+'</b> commence.</p>'+(g.msg?'<p class="err">'+esc(g.msg)+'</p>':'')+''+(missing.length?'<p class="mute">En attente des mots de : '+missing.map(function(id){return pname(id)}).join(", ")+'</p>':'<p class="mute">Tous les mots sont là : votez pour le joueur à éliminer.</p>');
+    var canV=d&&!dead&&!missing.length;
+    g.order.forEach(function(id){
+      var p=P.filter(function(x){return x.peer==id})[0],dd=g.dead[id],voted=p&&p.presence.vs===g.vs,mine=mp&&mp.presence.vs===g.vs&&mp.presence.vote==id;
+      h+='<div class="pl '+(dd?"dead":"")+'"><span>'+pwho(id)+(id==my?" (toi)":"")+(p&&p.presence.cr===rk&&p.presence.cl?'<br><small class="mute">« '+esc(String(p.presence.cl).slice(0,24))+' »</small>':'')+'</span>';
+      if(dd)h+='<span class="tag '+dd+'">'+lbl(dd)+'</span>';
+      else{h+='<span>'+(voted?'<span class="tag">a voté</span> ':'');if(canV&&id!=my)h+='<button class="'+(mine?"red":"alt")+'" onclick="voteFor(\''+id+'\')">'+(mine?"Voté ✓":"Voter")+'</button>';h+='</span>'}
+      h+='</div>'});
+    return h+'</div>'}
+  if(g.phase=="out"){
+    var r=g.deal[g.out][0];
+    h+='<h2>'+pname(g.out)+' est éliminé</h2><div class="card">'+pXl(g.out)+'<div class="big">'+(r=="c"?"🙂":r=="u"?"🕵️":"👻")+'</div><p style="text-align:center">C’était un <span class="tag '+r+'">'+lbl(r)+'</span></p>';
+    var wait=r=="w"&&!g.guessed;
+    if(wait&&g.out==my)h+='<p>Dernière chance ! Quel est le mot des civils ?</p><input type="text" id="g" aria-label="Mot des civils"><button class="red" onclick="sendGuess()">Valider</button>';
+    else if(wait)h+='<p class="mute" style="text-align:center">Mr White tente de deviner le mot…</p>';
+    if(g.msg)h+='<p class="err" style="text-align:center">'+esc(g.msg)+'</p>';
+    h+='</div>';
+    if(isH)h+='<button '+(wait?"disabled":"")+' onclick="hcont()">Continuer</button>';
+    else if(!wait)h+='<p class="mute" style="text-align:center">L’hôte lance la suite…</p>';
+    return h}
+  h+='<div class="big">'+(g.win=="c"?"🎉":"😈")+'</div><h1 style="text-align:center">'+winTxt(g.win)+'</h1><div class="card"><p>Mot des civils : <b>'+esc(g.cw||"")+'</b></p><p>Mot de l’undercover : <b>'+esc(g.uw||"")+'</b></p>';
+  g.order.forEach(function(id){var r=g.deal[id][0];h+='<div class="pl"><span>'+pwho(id)+'</span><span class="tag '+r+'">'+lbl(r)+'</span></div>'});
+  h+='</div>';
+  if(isH)h+='<button class="red" onclick="hreplay()">Rejouer</button>';
+  else h+='<p class="mute" style="text-align:center">L’hôte peut relancer une partie.</p>';
+  return h}
+
+/* ---------- Démarrage ---------- */
+if(window.claude&&window.claude.use){window.claude.use("room").then(function(r){RM=r||null;if(S.screen=="menu")render()}).catch(function(){RM=null;if(S.screen=="menu")render()})}
+else RM=null;
+render();
+</script>
+</body>
+</html>
